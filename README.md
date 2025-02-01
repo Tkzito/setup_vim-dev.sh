@@ -36,7 +36,7 @@ Baixe o repositório para sua máquina local:
 bash
 Copiar
 Editar
-git clone https://github.com/seu-usuario/repo-vim-setup.git
+git clone https://github.com/Tkzito/setup_vim-dev.sh
 cd repo-vim-setup
 2. Tornar o script executável
 Após o download, conceda permissão de execução ao script:
