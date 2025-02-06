@@ -11,21 +11,54 @@ echo " - LSP para Python/Javascript"
 echo "***********************************************************"
 echo
 
-# Verificar sistema
-if ! command -v apt &> /dev/null; then
-  echo "ERRO: Sistema não compatível (apenas Debian/Ubuntu/Kali)" >&2
-  exit 1
-fi
+# Função para detectar a distribuição
+detect_distro() {
+  if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    DISTRO=$ID
+  elif command -v lsb_release &> /dev/null; then
+    DISTRO=$(lsb_release -s -d | awk '{print $1}')
+  else
+    echo "Distribuição desconhecida" >&2
+    exit 1
+  fi
+  echo "Distribuição detectada: $DISTRO"
+}
 
-# Etapa 1: Atualização do sistema
-echo "=== ATUALIZANDO SISTEMA ==="
-sudo apt update && sudo apt upgrade -y
+# Chamada para detectar a distribuição
+detect_distro
 
-# Etapa 2: Instalar dependências
-echo -e "\n=== INSTALANDO PACOTES ==="
-sudo apt install -y vim git curl nodejs npm python3 python3-pip python3-venv pipx unzip
+# Verificar e instalar pacotes conforme a distribuição
+install_dependencies() {
+  case "$DISTRO" in
+    ubuntu|debian|kali)
+      echo "Distribuição Debian/Ubuntu/Kali detectada."
+      sudo apt update && sudo apt upgrade -y
+      sudo apt install -y vim git curl nodejs npm python3 python3-pip unzip
+      ;;
+    arch)
+      echo "Distribuição Arch Linux detectada."
+      sudo pacman -Syu --noconfirm
+      sudo pacman -S --noconfirm vim git curl nodejs npm python python-pip unzip
+      ;;
+    fedora)
+      echo "Distribuição Fedora detectada."
+      sudo dnf update -y
+      sudo dnf install -y vim git curl nodejs npm python3 python3-pip unzip
+      ;;
+    *)
+      echo "Distribuição não suportada ou desconhecida!" >&2
+      exit 1
+      ;;
+  esac
+}
 
-# Configurar pipx
+# Instalar dependências
+install_dependencies
+
+# Instalar pipx (independente da distro)
+echo -e "\n=== INSTALANDO O PIPX ==="
+python3 -m pip install --user pipx
 python3 -m pipx ensurepath
 export PATH="$PATH:$HOME/.local/bin"
 
