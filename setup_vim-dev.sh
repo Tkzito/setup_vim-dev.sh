@@ -4,10 +4,13 @@ set -e  # Encerra o script imediatamente em caso de erro
 # Cabeçalho informativo
 echo "***********************************************************"
 echo " CONFIGURADOR DE AMBIENTE DE DESENVOLVIMENTO VIM + COC.NVIM"
-echo " Inclui:"
-echo " - Plugins essenciais"
-echo " - Nerd Fonts (Cascadia Mono)"
-echo " - LSP para Python/Javascript"
+echo " Este script irá detectar automaticamente a sua distribuição Linux"
+echo " e configurar o ambiente de desenvolvimento com Vim e Coc.nvim."
+echo " O processo inclui:"
+echo " - Instalação automática das dependências conforme sua distribuição"
+echo " - Configuração do Vim com plugins essenciais"
+echo " - Instalação do LSP (Language Server Protocol) para Python/Javascript"
+echo " - Fontes Nerd (Cascadia Mono)"
 echo "***********************************************************"
 echo
 
@@ -28,7 +31,7 @@ detect_distro() {
 # Chamada para detectar a distribuição
 detect_distro
 
-# Verificar e instalar pacotes conforme a distribuição
+# Função para instalar dependências conforme a distribuição
 install_dependencies() {
   case "$DISTRO" in
     ubuntu|debian|kali)
@@ -40,6 +43,7 @@ install_dependencies() {
       echo "Distribuição Arch Linux detectada."
       sudo pacman -Syu --noconfirm
       sudo pacman -S --noconfirm vim git curl nodejs npm python python-pip unzip
+      sudo pacman -S --noconfirm python-pipx  # Instala pipx usando pacman
       ;;
     fedora)
       echo "Distribuição Fedora detectada."
@@ -56,11 +60,20 @@ install_dependencies() {
 # Instalar dependências
 install_dependencies
 
-# Instalar pipx (independente da distro)
-echo -e "\n=== INSTALANDO O PIPX ==="
-python3 -m pip install --user pipx
-python3 -m pipx ensurepath
-export PATH="$PATH:$HOME/.local/bin"
+# Instalar o pipx (caso ainda não tenha sido instalado com pacman/apt/dnf)
+if ! command -v pipx &> /dev/null; then
+  echo -e "\n=== INSTALANDO O PIPX ==="
+  if [ "$DISTRO" == "arch" ]; then
+    echo "pipx já instalado com pacman."
+  elif [ "$DISTRO" == "ubuntu" ] || [ "$DISTRO" == "debian" ] || [ "$DISTRO" == "kali" ]; then
+    sudo apt install -y python3-pipx
+  else
+    echo "Usando Python virtual para instalar pipx"
+    python3 -m pip install --user pipx
+    python3 -m pipx ensurepath
+    export PATH="$PATH:$HOME/.local/bin"
+  fi
+fi
 
 # Etapa 3: Instalar Jedi Language Server
 echo -e "\n=== CONFIGURANDO LSP (JEDI) ==="
