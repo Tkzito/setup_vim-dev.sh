@@ -1,191 +1,109 @@
 #!/bin/bash
-set -e  # Encerra o script imediatamente em caso de erro
 
-# Cabeçalho informativo
 echo "***********************************************************"
 echo " CONFIGURADOR DE AMBIENTE DE DESENVOLVIMENTO VIM + COC.NVIM"
-echo " Este script irá detectar automaticamente a sua distribuição Linux"
-echo " e configurar o ambiente de desenvolvimento com Vim e Coc.nvim."
-echo " O processo inclui:"
-echo " - Instalação automática das dependências conforme sua distribuição"
-echo " - Configuração do Vim com plugins essenciais"
-echo " - Instalação do LSP (Language Server Protocol) para Python/Javascript"
-echo " - Fontes Nerd (Cascadia Mono)"
 echo "***********************************************************"
-echo
+echo "Este script automatiza a configuração do ambiente de desenvolvimento"
+echo "para Vim com o plugin Coc.nvim, proporcionando uma experiência de"
+echo "desenvolvimento completa com suporte a Language Server Protocol (LSP)"
+echo "para linguagens como Python e JavaScript."
+echo ""
+echo "Ao executar este script, você estará configurando o ambiente com:"
+echo "- Instalação automática das dependências conforme a distribuição Linux"
+echo "- Configuração do Vim com os plugins essenciais para um fluxo de trabalho eficiente"
+echo "- Instalação do LSP (Language Server Protocol) para Python e JavaScript"
+echo "- Instalação das fontes Nerd, como Cascadia Mono, para uma melhor estética"
+echo ""
+echo "Distribuições suportadas: Ubuntu, Debian, Fedora, Manjaro, Arch"
+echo ""
+echo "A instalação será realizada de maneira adaptativa, detectando sua"
+echo "distribuição Linux e instalando as dependências necessárias automaticamente."
+echo "***********************************************************"
 
-# Função para detectar a distribuição
-detect_distro() {
-  if [ -f /etc/os-release ]; then
-    . /etc/os-release
-    DISTRO=$ID
-  elif command -v lsb_release &> /dev/null; then
-    DISTRO=$(lsb_release -s -d | awk '{print $1}')
-  else
-    echo "Distribuição desconhecida" >&2
+# Detecta a distribuição
+distro=$(cat /etc/os-release | grep ^ID= | cut -d= -f2)
+
+echo "Distribuição detectada: $distro"
+
+# Instalar dependências de acordo com a distribuição
+if [ "$distro" == "ubuntu" ] || [ "$distro" == "debian" ]; then
+    sudo apt update
+    sudo apt install -y vim nodejs npm curl git
+elif [ "$distro" == "manjaro" ] || [ "$distro" == "arch" ]; then
+    sudo pacman -Syu --noconfirm
+    sudo pacman -S --noconfirm vim nodejs npm curl git
+elif [ "$distro" == "fedora" ]; then
+    sudo dnf update -y
+    sudo dnf install -y vim nodejs npm curl git
+else
+    echo "Distribuição não suportada ou desconhecida!"
     exit 1
-  fi
-  echo "Distribuição detectada: $DISTRO"
-}
-
-# Chamada para detectar a distribuição
-detect_distro
-
-# Função para instalar dependências conforme a distribuição
-install_dependencies() {
-  case "$DISTRO" in
-    ubuntu|debian|kali)
-      echo "Distribuição Debian/Ubuntu/Kali detectada."
-      sudo apt update && sudo apt upgrade -y
-      sudo apt install -y vim git curl nodejs npm python3 python3-pip unzip
-      ;;
-    arch)
-      echo "Distribuição Arch Linux detectada."
-      sudo pacman -Syu --noconfirm
-      sudo pacman -S --noconfirm vim git curl nodejs npm python python-pip unzip
-      sudo pacman -S --noconfirm python-pipx  # Instala pipx usando pacman
-      ;;
-    fedora)
-      echo "Distribuição Fedora detectada."
-      sudo dnf update -y
-      sudo dnf install -y vim git curl nodejs npm python3 python3-pip unzip
-      ;;
-    *)
-      echo "Distribuição não suportada ou desconhecida!" >&2
-      exit 1
-      ;;
-  esac
-}
-
-# Instalar dependências
-install_dependencies
-
-# Instalar o pipx (caso ainda não tenha sido instalado com pacman/apt/dnf)
-if ! command -v pipx &> /dev/null; then
-  echo -e "\n=== INSTALANDO O PIPX ==="
-  if [ "$DISTRO" == "arch" ]; then
-    echo "pipx já instalado com pacman."
-  elif [ "$DISTRO" == "ubuntu" ] || [ "$DISTRO" == "debian" ] || [ "$DISTRO" == "kali" ]; then
-    sudo apt install -y python3-pipx
-  else
-    echo "Usando Python virtual para instalar pipx"
-    python3 -m pip install --user pipx
-    python3 -m pipx ensurepath
-    export PATH="$PATH:$HOME/.local/bin"
-  fi
 fi
 
-# Etapa 3: Instalar Jedi Language Server
-echo -e "\n=== CONFIGURANDO LSP (JEDI) ==="
-python3 -m pipx install --force jedi-language-server
-
-# Etapa 4: Instalar fontes
-echo -e "\n=== INSTALANDO FONTES ==="
-mkdir -p ~/.local/share/fonts
-curl -L https://github.com/ryanoasis/nerd-fonts/releases/download/v3.3.0/CascadiaMono.zip -o /tmp/CascadiaMono.zip
-unzip -o /tmp/CascadiaMono.zip -d ~/.local/share/fonts/
-fc-cache -fv
-rm /tmp/CascadiaMono.zip
-
-# Etapa 5: Configurar Vim-Plug
-echo -e "\n=== CONFIGURANDO VIM-PLUG ==="
+# Verificar se o vim-plug já está instalado
 if [ ! -f ~/.vim/autoload/plug.vim ]; then
-  curl -fLo ~/.vim/autoload/plug.vim --create-dirs \
-    https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+    echo "Instalando o Vim-Plug..."
+    curl -fLo ~/.vim/autoload/plug.vim --create-dirs \
+        https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+else
+    echo "Vim-Plug já está instalado."
 fi
 
-# Etapa 6: Criar .vimrc
-echo -e "\n=== CRIANDO CONFIGURAÇÃO DO VIM ==="
-cat <<'EOL' > ~/.vimrc
-" Configurações básicas
-syntax on
-set number relativenumber
-set tabstop=2 shiftwidth=2 expandtab
-set mouse=a clipboard=unnamedplus
-set cursorline smartindent
+# Configurar o Vim para usar o Coc.nvim e outros plugins essenciais
+echo "Configurando o Vim..."
+cat <<EOF > ~/.vimrc
+" Vim básico com configurações e plugins essenciais
 
-" Gerenciador de plugins
+" Ativa o Vim-Plug
 call plug#begin('~/.vim/plugged')
 
-Plug 'mhinz/vim-startify'                     " Tela inicial
-Plug 'rafi/awesome-vim-colorschemes'          " Temas
-Plug 'preservim/nerdtree'                     " Navegador de arquivos
-Plug 'ryanoasis/vim-devicons'                 " Ícones
-Plug 'vim-airline/vim-airline'                " Barra de status
-Plug 'neoclide/coc.nvim', {'branch': 'release'} " LSP
-Plug 'dense-analysis/ale'                     " Linting
-Plug 'sheerun/vim-polyglot'                   " Suporte multi-linguagem
+" Plugins essenciais
+Plug 'neoclide/coc.nvim', {'branch': 'release'}
+Plug 'preservim/nerdtree'
+Plug 'airblade/vim-gitgutter'
+Plug 'junegunn/fzf.vim'
 
 call plug#end()
 
-" Aparência
-colorscheme materialbox
-let g:airline_powerline_fonts = 1
-let g:airline_theme='base16_twilight'
+" Configurações gerais do Vim
+set number                  " Número das linhas
+set relativenumber          " Número relativo das linhas
+set tabstop=4               " Tamanho da tabulação
+set shiftwidth=4            " Tamanho do recuo
+set expandtab               " Usar espaços em vez de tabs
+set smartindent             " Indentação inteligente
+set incsearch               " Pesquisa incremental
+set hlsearch                " Destacar resultados de pesquisa
+set ignorecase              " Ignorar maiúsculas/minúsculas na pesquisa
+set clipboard=unnamedplus   " Usar a área de transferência do sistema
 
-" NERDTree
-map <C-n> :NERDTreeToggle<CR>
-let g:NERDTreeShowHidden = 1
+" Configurações do Coc.nvim (LSP)
+let g:coc_global_extensions = ['coc-python', 'coc-tsserver']
 
-" Configuração do coc.nvim
-source ~/.vim/coc.vimrc
-EOL
+EOF
 
-# Etapa 7: Configuração do coc.nvim
-echo -e "\n=== CONFIGURANDO COC.NVIM ==="
-mkdir -p ~/.vim
+# Instalar os plugins do Vim
+echo "Instalando plugins do Vim..."
+vim +PlugInstall +qall
 
-# Arquivo coc.vimrc manual
-cat <<'EOL' > ~/.vim/coc.vimrc
-set hidden nobackup nowritebackup
-set cmdheight=2 updatetime=300
-set shortmess+=c signcolumn=yes
+# Instalar as fontes Nerd (Cascadia Mono)
+echo "Instalando fontes Nerd (Cascadia Mono)..."
+git clone https://github.com/ryanoasis/nerd-fonts.git ~/.nerd-fonts
+~/.nerd-fonts/install.sh
 
-" Mapeamentos
-inoremap <silent><expr> <TAB> pumvisible() ? "\<C-n>" : "\<TAB>"
-inoremap <expr><S-TAB> pumvisible() ? "\<C-p>" : "\<C-h>"
+# Instalar o LSP para Python e JavaScript
+echo "Instalando o LSP para Python e JavaScript..."
+npm install -g pyright
+npm install -g typescript typescript-language-server
 
-nmap <silent> gd <Plug>(coc-definition)
-nmap <silent> gy <Plug>(coc-type-definition)
-nmap <silent> gr <Plug>(coc-references)
-nmap <silent> K :call ShowDocumentation()<CR>
-
-function! ShowDocumentation()
-  if (index(['vim','help'], &filetype) >= 0)
-    execute 'h '.expand('<cword>')
-  else
-    call CocAction('doHover')
-  endif
-endfunction
-
-autocmd CursorHold * silent call CocActionAsync('highlight')
-EOL
-
-# Arquivo coc-settings.json
-cat <<EOL > ~/.vim/coc-settings.json
-{
-  "languageserver": {
-    "jedi": {
-      "command": "jedi-language-server",
-      "args": ["--stdio"],
-      "filetypes": ["python"],
-      "initializationOptions": {"markupKindPreferred": "markdown"}
-    }
-  }
-}
-EOL
-
-# Etapa 8: Instalar plugins
-echo -e "\n=== INSTALANDO PLUGINS ==="
-vim -c "PlugInstall" -c "qall" > /dev/null
-
-# Mensagem final
-echo -e "\n\033[1;32mCONFIGURAÇÃO CONCLUÍDA!\033[0m"
-echo "-----------------------------------------------"
-echo "1. Configure a fonte 'CascadiaMono NF' no terminal"
-echo "2. Comandos úteis:"
-echo "   - Ctrl+n : NERDTree"
-echo "   - gd     : Ir para definição"
-echo "   - :CocInstall coc-pyright : Extensão Python"
-echo "   - :PlugUpdate : Atualizar plugins"
-echo "-----------------------------------------------"
+# Finalizando
+echo "***********************************************************"
+echo "Configuração concluída!"
+echo "O ambiente de desenvolvimento foi configurado com sucesso!"
+echo "Agora você pode usar o Vim com o Coc.nvim para uma experiência de"
+echo "desenvolvimento aprimorada com suporte a LSP para Python e JavaScript."
+echo ""
+echo "Para começar, basta rodar o comando 'vim' no terminal."
+echo ""
+echo "Agradecemos por utilizar este script! Aproveite sua jornada de"
+echo "desenvolvimento com Vim e Coc.nvim."
